@@ -1,5 +1,6 @@
 import tensorflow as tf
 import cv2
+import time
 import matplotlib.image as Image
 import matplotlib.pyplot as plt
 import tensorflow.contrib.slim as slim
@@ -38,7 +39,6 @@ def test(ckpt_path, img_path):
         plt.imsave('./result/weight.jpg', score_txt)
         plt.imsave('./result/weight_aff.jpg', score_link)
 
-
 def train(train=True):
     x = tf.placeholder(shape=[None, 512, 512, 3], dtype=tf.float32, name='x')
     y = tf.placeholder(shape=[None, 256, 256, 2], dtype=tf.float32, name='y')
@@ -68,9 +68,13 @@ def train(train=True):
         restorer = tf.train.Saver(variables_to_restore)
     else:
         restorer = tf.train.Saver()
-    gpu_options = tf.GPUOptions() # per_process_gpu_memory_fraction=0.85)
+    # gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.85)
     saver = tf.train.Saver()
-    with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.gpu_options.per_process_gpu_memory_fraction = 0.98
+    config.allow_soft_placement = True
+    with tf.Session(config=config) as sess:
         sess.run(tf.global_variables_initializer())
         if train:
             print('-----load vgg-----')
@@ -91,11 +95,15 @@ def train(train=True):
         loss_t = 0
         for e in range(epoch):
             gen = generator(shuffle=True, batch_size=batch_size)
+            chkpnt = time.time()
+            start = time.time()
             for i in range(data_len//batch_size):
                 image, label = next(gen)
                 _, loss_f0, learning_rate0, global_step0 = sess.run([train_step, loss, learning_rate, global_step], feed_dict={x: image, y: label})
-                print('\rstep: %2d   learning_rate: %4g   total_loss: %4g' 
-                            % (global_step0, learning_rate0, loss_f0), end='')
+                avg_time = (time.time() - start)
+				start = time.time()
+                print('\rstep: %2d   learning_rate: %4g   total_loss: %4g   avg_time: %2g' 
+                            % (global_step0, learning_rate0, loss_f0, avg_time), end='')
                 loss_t += loss_f0
                 if global_step0%100==0:
                     avg_loss = loss_t/100
@@ -105,8 +113,10 @@ def train(train=True):
                     #res_0, res_1 = text_utils.get_res_hmp(res)
                     plt.imsave('./result/result_c.jpg', cv2.resize(res[0,:,:,0], (512, 512)))
                     plt.imsave('./result/result_a.jpg', cv2.resize(res[0,:,:,1], (512, 512)))
-                    print('\nstep: %2d   learning_rate: %4g   avg_total_loss: %4g' 
-                            % (global_step0, learning_rate0, avg_loss))
+                    avg_time = (time.time() - chkpnt) / 100
+					chkpnt = time.time()
+                    print('\nstep: %2d   learning_rate: %4g   avg_total_loss: %4g   avg_time: %2g' 
+                            % (global_step0, learning_rate0, avg_loss, avg_time))
                     char_loss_t = 0
                     aff_loss_t = 0
                     loss_t = 0
