@@ -35,19 +35,19 @@ def test(ckpt_path, img_path):
         res = cv2.resize(res, (512, 512))
         score_txt = res[:,:,0]
         score_link = res[:,:,1]
-        plt.imsave('/home/user4/ysx/CRAFT/result/weight.jpg', score_txt)
-        plt.imsave('/home/user4/ysx/CRAFT/result/weight_aff.jpg', score_link)
+        plt.imsave('./result/weight.jpg', score_txt)
+        plt.imsave('./result/weight_aff.jpg', score_link)
 
 
 def train(train=True):
     x = tf.placeholder(shape=[None, 512, 512, 3], dtype=tf.float32, name='x')
     y = tf.placeholder(shape=[None, 256, 256, 2], dtype=tf.float32, name='y')
     y_pre, end_point = CRAFT_net(x)
-    modelpath = '/home/user4/ysx/CRAFT/model'
+    modelpath = './model'
     loss = MSE_OHEM_Loss(y_pre, y)
     # char_loss, aff_loss, loss_f = loss(y_pre, y)
     end_point['loss'] = loss
-    textimg = Image.imread('/home/user4/ysx/CRAFT/te.jpg')
+    textimg = Image.imread('./te.jpg')
     textimg1 = np.reshape(textimg, (1, 512, 512, 3))
     textimg = normalizeMeanVariance(textimg1)
 
@@ -68,23 +68,23 @@ def train(train=True):
         restorer = tf.train.Saver(variables_to_restore)
     else:
         restorer = tf.train.Saver()
-    gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.35)
+    gpu_options = tf.GPUOptions() # per_process_gpu_memory_fraction=0.85)
     saver = tf.train.Saver()
     with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
         sess.run(tf.global_variables_initializer())
         if train:
             print('-----load vgg-----')
             # ckpt = tf.train.get_checkpoint_state(modelpath)
-            restorer.restore(sess, '/home/user4/ysx/CRAFT/model/vgg16.ckpt')
+            restorer.restore(sess, './model/vgg16.ckpt')
             print('-----load vgg complete-----')
             print('-----training-----')
         else:
             print('-----load ckpt-----')
-            restorer.restore(sess, '/home/user4/ysx/demo/CRAFT_214000.ckpt')
+            restorer.restore(sess, './demo/CRAFT_214000.ckpt')
             print('-----load ckpt complete')
             print('-----training------')
         batch_size = 2
-        epoch = 5
+        epoch = 1
         data_len = 858750
         char_loss_t = 0
         aff_loss_t = 0
@@ -103,16 +103,16 @@ def train(train=True):
                     get_result_img(textimg1, res[0,:,:,0], res[0,:,:,1])
                     # res = np.clip(res, 0, 1)
                     #res_0, res_1 = text_utils.get_res_hmp(res)
-                    plt.imsave('result_c.jpg', cv2.resize(res[0,:,:,0], (512, 512)))
-                    plt.imsave('result_a.jpg', cv2.resize(res[0,:,:,1], (512, 512)))
+                    plt.imsave('./result/result_c.jpg', cv2.resize(res[0,:,:,0], (512, 512)))
+                    plt.imsave('./result/result_a.jpg', cv2.resize(res[0,:,:,1], (512, 512)))
                     print('\nstep: %2d   learning_rate: %4g   avg_total_loss: %4g' 
                             % (global_step0, learning_rate0, avg_loss))
                     char_loss_t = 0
                     aff_loss_t = 0
                     loss_t = 0
                     if global_step0%1000==0:
-                        saver.save(sess, "/home/user4/ysx/demo/CRAFT_%d.ckpt" %(global_step0))
+                        saver.save(sess, "./demo/CRAFT_%d.ckpt" %(global_step0))
 
 if __name__ == '__main__':
-    train(False)
+    train(True)
     # test('/home/user4/ysx/demo/CRAFT_214000.ckpt', '/home/user4/ysx/CRAFT/802.jpg')
