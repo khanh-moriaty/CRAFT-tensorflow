@@ -188,6 +188,59 @@ def generator(shuffle=True, batch_size=2):
 	else:
 		print('TODO')
 
+mat_dir = '/mmlabstorage/workingspace/OCR/Database/Khanh_GenData/hard_1M/prep/'
+
+def getBB(dir, i):
+	mat = sio.loadmat(os.path.join(mat_dir, "label", dir[i]))
+	return mat['charBB']
+
+def getTxt(dir, i):
+	mat = sio.loadmat(os.path.join(mat_dir, "label", dir[i]))
+	return mat['txt'].tolist()
+	
+def getImg(dir, i):
+	_, fn = os.path.split(dir[i])
+	bfn, ext = os.path.splitext(fn)
+	im = plt.imread(os.path.join(mat_dir, "image", bfn+".jpg"))
+	return im
+	
+def generator(shuffle=True, batch_size=2):
+	dir = os.listdir(os.path.join(mat_dir, "label"))
+	dir.sort()
+	print('load mat_dir')
+	if shuffle:
+		import random
+		num = len(dir)
+		print(num)
+		shuffle_num = [v for v in range(num)]
+		# random.shuffle(shuffle_num)
+		for b in range(num//batch_size):
+			batch_image = []
+			batch_label = []
+			for i in shuffle_num[b*batch_size: (b+1)*batch_size]:
+				image = getImg(dir, i)
+				tmp = image.copy()
+				# bbox = charBB[i]
+				bbox = getBB(dir, i)
+				text = getTxt(dir, i)
+				# print(bbox.shape)
+				# print(bbox)
+				# print(type(bbox))
+				# print(text)
+				# print(type(text))
+				cv2.imwrite('./test.jpg',tmp[:,:,::-1])
+				_, weight, target, weight_aff, target_aff = procces_function(tmp, bbox, text)
+				label = np.dstack((weight, weight_aff))
+				res_img, res_label = tmp, label
+				res_img = cv2.resize(res_img, (512, 512), interpolation=cv2.INTER_LINEAR)
+				res_img = normalizeMeanVariance(res_img)
+				res_label = cv2.resize(res_label, (256, 256), interpolation=cv2.INTER_NEAREST)
+				batch_image.append(res_img)
+				batch_label.append(res_label)
+			yield np.array(batch_image), np.array(batch_label)
+	else:
+		print('TODO')
+
 if __name__ == '__main__':
 	gen = generator()
 	for i in range(10000):

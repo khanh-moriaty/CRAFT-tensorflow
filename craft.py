@@ -59,7 +59,7 @@ def train(train=True):
     variables_to_restore = slim.get_variables_to_restore(include=include)
 
     global_step = tf.Variable(0)
-    boundaries = [50000, 200000]
+    boundaries = [15000, 25000]
     learning_rate = [0.001, 0.0001, 0.00001]
     learning_rate = tf.train.piecewise_constant(global_step, boundaries=boundaries, values=learning_rate)
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -84,12 +84,12 @@ def train(train=True):
             print('-----training-----')
         else:
             print('-----load ckpt-----')
-            restorer.restore(sess, './demo/CRAFT_214000.ckpt')
+            restorer.restore(sess, './demo/CRAFT_15000.ckpt')
             print('-----load ckpt complete')
             print('-----training------')
-        batch_size = 2
+        batch_size = 3
         epoch = 1
-        data_len = 858750
+        data_len = 64735 # 858750
         char_loss_t = 0
         aff_loss_t = 0
         loss_t = 0
@@ -101,7 +101,7 @@ def train(train=True):
                 image, label = next(gen)
                 _, loss_f0, learning_rate0, global_step0 = sess.run([train_step, loss, learning_rate, global_step], feed_dict={x: image, y: label})
                 avg_time = (time.time() - start)
-				start = time.time()
+                start = time.time()
                 print('\rstep: %2d   learning_rate: %4g   total_loss: %4g   avg_time: %2g' 
                             % (global_step0, learning_rate0, loss_f0, avg_time), end='')
                 loss_t += loss_f0
@@ -114,15 +114,15 @@ def train(train=True):
                     plt.imsave('./result/result_c.jpg', cv2.resize(res[0,:,:,0], (512, 512)))
                     plt.imsave('./result/result_a.jpg', cv2.resize(res[0,:,:,1], (512, 512)))
                     avg_time = (time.time() - chkpnt) / 100
-					chkpnt = time.time()
+                    chkpnt = time.time()
                     print('\nstep: %2d   learning_rate: %4g   avg_total_loss: %4g   avg_time: %2g' 
                             % (global_step0, learning_rate0, avg_loss, avg_time))
                     char_loss_t = 0
                     aff_loss_t = 0
                     loss_t = 0
-                    if global_step0%1000==0:
+                    if global_step0%2000==0:
                         saver.save(sess, "./demo/CRAFT_%d.ckpt" %(global_step0))
 
 if __name__ == '__main__':
-    train(True)
-    # test('/home/user4/ysx/demo/CRAFT_214000.ckpt', '/home/user4/ysx/CRAFT/802.jpg')
+    train(False)
+    # test('./demo/CRAFT_12000.ckpt', './image/input/te.jpg')
